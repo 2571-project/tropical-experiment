@@ -541,7 +541,7 @@ mod tests {
         let monomial_3 = TropicalAutomorphism::monomial(
             [[3, 3, 3], [4, 2, 5], [4, 8, 3]],
             [
-                TropicalInt::from(8),   
+                TropicalInt::from(8),
                 TropicalInt::from(-1),
                 TropicalInt::from(-3),
             ],
@@ -563,7 +563,6 @@ mod tests {
             TropicalPolynomial::from(vec![
                 ([0, 9, 7], TropicalInt::from(4)),
                 ([0, 2, 5], TropicalInt::from(5)),
-                ([0, 10, 6], TropicalInt::from(5)),
             ]),
         )
         .compose(TropicalAutomorphism::elementary_triangular(
@@ -571,7 +570,6 @@ mod tests {
             TropicalPolynomial::from(vec![
                 ([0, 0, 3], TropicalInt::from(4)),
                 ([0, 0, 4], TropicalInt::from(5)),
-                ([0, 0, 6], TropicalInt::from(5)),
             ]),
         ))
         .compose(TropicalAutomorphism::elementary_triangular(
@@ -583,7 +581,6 @@ mod tests {
             0,
             TropicalPolynomial::from(vec![
                 ([0, 6, 4], TropicalInt::from(4)),
-                ([0, 8, 7], TropicalInt::from(5)),
                 ([0, 3, 1], TropicalInt::from(5)),
             ]),
         )
@@ -592,7 +589,6 @@ mod tests {
             TropicalPolynomial::from(vec![
                 ([0, 0, 3], TropicalInt::from(4)),
                 ([0, 0, 2], TropicalInt::from(5)),
-                ([0, 0, 5], TropicalInt::from(5)),
             ]),
         ))
         .compose(TropicalAutomorphism::elementary_triangular(
@@ -639,7 +635,11 @@ mod tests {
         let v = TropicalPolynomial::monomial([0, 5, 7], TropicalInt::from(2));
         let upv = u.clone() + v.clone();
 
-        assert_eq!(auto.apply(&u) + auto.apply(&v), auto.apply(&upv));
+        let cyphertext_u = auto.apply(&u);
+        let cyphertext_v = auto.apply(&v);
+        let cyphertext_upv = auto.apply(&upv);
+
+        assert_eq!(cyphertext_u + cyphertext_v, cyphertext_upv);
     }
 
     // FIXME: inverses will not work until we implement TropicalRational::simplify
