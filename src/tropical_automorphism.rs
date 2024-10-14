@@ -162,7 +162,7 @@ mod tests {
             (
                 /*
                     a(x, y) = (x³y^4, xy²) | a: T² -> T²
-                    u(x, y) = x² + y² | u: T² ->
+                    u(x, y) = x² + y² | u: T² -> T
                     (u o a) = x^6y^8 + x^2y^4
                 */
                 TropicalAutomorphism::new([
