@@ -145,8 +145,12 @@ impl<const N: usize> fmt::Display for TropicalAutomorphism<N> {
 
 #[cfg(test)]
 mod tests {
+    use rand::{rngs::ThreadRng, Rng};
+    use test::Bencher;
+
     use crate::{
-        tropical_int::TropicalInt, tropical_polynomial::TropicalPolynomial,
+        tropical_int::TropicalInt,
+        tropical_polynomial::{Degree, TropicalPolynomial},
         tropical_rational::TropicalRational,
     };
 
@@ -476,8 +480,7 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_generate_key() {
+    fn generate_3_terms_key() -> TropicalAutomorphism<3> {
         let triangular_1: TropicalAutomorphism<3> = TropicalAutomorphism::elementary_triangular(
             0,
             TropicalPolynomial::from(vec![
@@ -547,29 +550,26 @@ mod tests {
             ],
         );
 
-        let public_key = monomial_1
+        monomial_1
             .compose(triangular_1)
             .compose(monomial_2)
             .compose(triangular_2)
-            .compose(monomial_3);
-
-        println!("{public_key}");
+            .compose(monomial_3)
     }
 
-    #[test]
-    fn test_homomorphic_property() {
+    fn generate_2_terms_key() -> TropicalAutomorphism<3> {
         let triangular_1: TropicalAutomorphism<3> = TropicalAutomorphism::elementary_triangular(
             0,
             TropicalPolynomial::from(vec![
                 ([0, 9, 7], TropicalInt::from(4)),
-                ([0, 2, 5], TropicalInt::from(5)),
+                ([0, 10, 6], TropicalInt::from(5)),
             ]),
         )
         .compose(TropicalAutomorphism::elementary_triangular(
             1,
             TropicalPolynomial::from(vec![
                 ([0, 0, 3], TropicalInt::from(4)),
-                ([0, 0, 4], TropicalInt::from(5)),
+                ([0, 0, 6], TropicalInt::from(5)),
             ]),
         ))
         .compose(TropicalAutomorphism::elementary_triangular(
@@ -588,7 +588,7 @@ mod tests {
             1,
             TropicalPolynomial::from(vec![
                 ([0, 0, 3], TropicalInt::from(4)),
-                ([0, 0, 2], TropicalInt::from(5)),
+                ([0, 0, 5], TropicalInt::from(5)),
             ]),
         ))
         .compose(TropicalAutomorphism::elementary_triangular(
@@ -623,13 +623,16 @@ mod tests {
             ],
         );
 
-        let public_key = monomial_1
+        monomial_1
             .compose(triangular_1)
             .compose(monomial_2)
             .compose(triangular_2)
-            .compose(monomial_3);
+            .compose(monomial_3)
+    }
 
-        let auto = public_key;
+    #[test]
+    fn test_homomorphic_property() {
+        let auto = generate_2_terms_key();
 
         let u = TropicalPolynomial::monomial([1, 2, 3], TropicalInt::from(4));
         let v = TropicalPolynomial::monomial([0, 5, 7], TropicalInt::from(2));
@@ -640,6 +643,68 @@ mod tests {
         let cyphertext_upv = auto.apply(&upv);
 
         assert_eq!(cyphertext_u + cyphertext_v, cyphertext_upv);
+    }
+
+    #[bench]
+    fn bench_3_terms_key_generation(b: &mut Bencher) {
+        b.iter(|| {
+            let _public_key = generate_3_terms_key();
+        })
+    }
+
+    #[bench]
+    fn bench_2_terms_key_generation(b: &mut Bencher) {
+        b.iter(|| {
+            let _public_key = generate_2_terms_key();
+        })
+    }
+
+    // README: this is lobotomized, new optimization goal: removing the commented out lines
+    #[bench]
+    fn bench_2_terms_10_variable_key_generation(b: &mut Bencher) {
+        // TODO: increase
+        const N: usize = 5;
+
+        let make_random_elementary_triangular_row =
+            |i: usize, rng: &mut ThreadRng| -> ([Degree; N], TropicalInt) {
+                (
+                    core::array::from_fn(|j| if j < i { 0 } else { rng.gen() }),
+                    TropicalInt::from(rng.gen::<i64>()),
+                )
+            };
+
+        let make_random_triangular = |rng: &mut ThreadRng| {
+            (0..N - 1).fold(TropicalAutomorphism::identity(), |acc, variable| {
+                acc.compose(TropicalAutomorphism::elementary_triangular(
+                    variable,
+                    TropicalPolynomial::from(vec![
+                        make_random_elementary_triangular_row(variable, rng),
+                        make_random_elementary_triangular_row(variable, rng),
+                    ]),
+                ))
+            })
+        };
+
+        let make_random_array =
+            |rng: &mut ThreadRng| -> [Degree; N] { core::array::from_fn(|_| rng.gen()) };
+
+        // good chance to have det != 0, it's a benchmark anyways
+        let make_random_monomial = |rng: &mut ThreadRng| {
+            TropicalAutomorphism::monomial(
+                core::array::from_fn(|_| make_random_array(rng)),
+                make_random_array(rng).map(TropicalInt::from),
+            )
+        };
+
+        b.iter(|| {
+            let mut rng = rand::thread_rng();
+
+            make_random_monomial(&mut rng)
+                .compose(make_random_triangular(&mut rng))
+                .compose(make_random_monomial(&mut rng))
+            // .compose(make_random_triangular(&mut rng))
+            // .compose(make_random_monomial(&mut rng));
+        });
     }
 
     // FIXME: inverses will not work until we implement TropicalRational::simplify

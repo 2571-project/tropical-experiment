@@ -3,5 +3,16 @@ name = "tropical-experiment"
 version = "0.1.0"
 edition = "2021"
 
+[profile.release]
+codegen-units = 1
+lto = "thin"
+strip = "debuginfo"
+
+[profile.bench]
+codegen-units = 1
+lto = "thin"
+strip = "debuginfo"
+
 [dependencies]
 num-bigint = "0.4.6"
+rand = "*"
