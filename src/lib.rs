@@ -1,3 +1,4 @@
+#![feature(new_range_api)]
 #![feature(test)]
 extern crate test;
 

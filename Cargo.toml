@@ -16,3 +16,4 @@ strip = "debuginfo"
 [dependencies]
 num-bigint = "0.4.6"
 rand = "*"
+rayon = "1.10.0"

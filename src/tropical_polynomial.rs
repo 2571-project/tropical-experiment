@@ -1,8 +1,8 @@
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign};
+use rayon::prelude::*;
 use std::collections::HashMap;
-
-use num_bigint::BigInt;
+use std::iter::Sum;
 
 use crate::tropical_int::TropicalInt;
 
@@ -44,6 +44,10 @@ impl<const N: usize> TropicalPolynomial<N> {
         Self::monomial(core::array::from_fn(|_| 0), constant)
     }
 
+    pub fn additive_identity() -> Self {
+        Self::constant(TropicalInt::AdditiveIdentity)
+    }
+
     pub fn multiplicative_identity() -> Self {
         Self::constant(TropicalInt::from(0))
     }
@@ -65,6 +69,7 @@ impl<const N: usize> TropicalPolynomial<N> {
                 .collect::<Vec<([Degree; N], TropicalInt)>>(),
         )
     }
+
     pub fn evaluate(&self, variables: [TropicalInt; N]) -> TropicalInt {
         self.terms.iter().fold(
             TropicalInt::AdditiveIdentity,
@@ -94,6 +99,7 @@ impl<const N: usize> From<Vec<([Degree; N], TropicalInt)>> for TropicalPolynomia
 impl<const N: usize> Add for TropicalPolynomial<N> {
     type Output = Self;
 
+    // TODO: parallelize?
     fn add(self, rhs: Self) -> Self {
         let mut result = TropicalPolynomial::new();
 
@@ -101,7 +107,7 @@ impl<const N: usize> Add for TropicalPolynomial<N> {
             let current_coefficient = result
                 .terms
                 .entry(*exponents)
-                .or_insert_with(|| TropicalInt::new(BigInt::from(0)));
+                .or_insert_with(|| TropicalInt::from(0));
             *current_coefficient = current_coefficient.clone() + coefficient.clone();
         }
 
@@ -115,7 +121,7 @@ impl<const N: usize> AddAssign for TropicalPolynomial<N> {
             let current_coefficient = self
                 .terms
                 .entry(exponents)
-                .or_insert_with(|| TropicalInt::new(BigInt::from(0)));
+                .or_insert_with(|| TropicalInt::from(0));
             *current_coefficient = current_coefficient.clone() + coefficient;
         }
     }
@@ -139,7 +145,7 @@ impl<const N: usize> Mul for TropicalPolynomial<N> {
                 let current_coefficient = result
                     .terms
                     .entry(new_exponents)
-                    .or_insert_with(|| TropicalInt::new(BigInt::from(0)));
+                    .or_insert_with(|| TropicalInt::from(0));
                 *current_coefficient = current_coefficient.clone() + new_coefficient;
             }
         }
@@ -207,6 +213,12 @@ impl<const N: usize> fmt::Display for TropicalPolynomial<N> {
         }
 
         Ok(())
+    }
+}
+
+impl<const N: usize> Sum for TropicalPolynomial<N> {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(TropicalPolynomial::additive_identity(), |a, b| a + b)
     }
 }
 
@@ -329,7 +341,7 @@ mod tests {
     }
 
     #[test]
-    fn test_evalute() {
+    fn test_evaluate() {
         let test_table: Vec<(TropicalPolynomial<3>, [TropicalInt; 3], TropicalInt)> = vec![
             (
                 TropicalPolynomial::monomial([1, 2, 3], TropicalInt::from(5)),

@@ -1,17 +1,16 @@
 use core::cmp::Ordering;
 use core::fmt;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign};
-
-use num_bigint::BigInt;
+use std::iter::Sum;
 
 #[derive(Clone, Debug)]
 pub enum TropicalInt {
     AdditiveIdentity,
-    Integer(BigInt),
+    Integer(i64),
 }
 
 impl TropicalInt {
-    pub fn new(value: BigInt) -> Self {
+    pub fn new(value: i64) -> Self {
         Self::Integer(value)
     }
 
@@ -25,7 +24,7 @@ impl TropicalInt {
 
     pub fn pow<D>(&self, power: D) -> Self
     where
-        D: Into<BigInt>,
+        D: Into<i64>,
     {
         match self {
             Self::Integer(int) => Self::new(int.clone() * power.into()),
@@ -130,7 +129,13 @@ impl fmt::Display for TropicalInt {
 
 impl From<i64> for TropicalInt {
     fn from(value: i64) -> Self {
-        TropicalInt::new(BigInt::from(value))
+        TropicalInt::new(value)
+    }
+}
+
+impl Sum for TropicalInt {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(TropicalInt::AdditiveIdentity, |a, b| a + b)
     }
 }
 

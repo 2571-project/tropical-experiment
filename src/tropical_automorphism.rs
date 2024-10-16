@@ -1,5 +1,7 @@
 use core::fmt;
 
+use rayon::prelude::*;
+
 use crate::{
     tropical_int::TropicalInt,
     tropical_polynomial::{Degree, TropicalPolynomial},
@@ -92,16 +94,25 @@ impl<const N: usize> TropicalAutomorphism<N> {
                     TropicalPolynomial::constant(coefficient.clone()),
                     |term, (index, degree)| term * self.mappings[index].numerator.pow(*degree),
                 )
+                // .reduce(
+                //     || TropicalPolynomial::multiplicative_identity(),
+                //     |a, b| a * b,
+                // )
             },
         )
     }
 
-    pub fn compose(&self, rhs: Self) -> Self {
+    pub fn compose(self, rhs: Self) -> Self {
         Self {
             mappings: self
                 .mappings
-                .clone()
-                .map(|lhs| TropicalRational::new(rhs.apply(&lhs.numerator), lhs.denominator)),
+                .par_iter()
+                .map(|lhs| {
+                    TropicalRational::new(rhs.apply(&lhs.numerator), lhs.denominator.clone())
+                })
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
         }
     }
 }
@@ -146,6 +157,7 @@ impl<const N: usize> fmt::Display for TropicalAutomorphism<N> {
 #[cfg(test)]
 mod tests {
     use rand::{rngs::ThreadRng, Rng};
+    use rayon::prelude::*;
     use test::Bencher;
 
     use crate::{
@@ -668,31 +680,30 @@ mod tests {
         let make_random_elementary_triangular_row =
             |i: usize, rng: &mut ThreadRng| -> ([Degree; N], TropicalInt) {
                 (
-                    core::array::from_fn(|j| if j < i { 0 } else { rng.gen() }),
-                    TropicalInt::from(rng.gen::<i64>()),
+                    core::array::from_fn(|j| if j < i { 0 } else { rng.gen_range(0..255) }),
+                    TropicalInt::from(rng.gen_range(0..127)),
                 )
             };
 
-        let make_random_triangular = |rng: &mut ThreadRng| {
+        let make_random_triangular = || {
             (0..N - 1).fold(TropicalAutomorphism::identity(), |acc, variable| {
+                let mut rng = rand::thread_rng();
+
                 acc.compose(TropicalAutomorphism::elementary_triangular(
                     variable,
                     TropicalPolynomial::from(vec![
-                        make_random_elementary_triangular_row(variable, rng),
-                        make_random_elementary_triangular_row(variable, rng),
+                        make_random_elementary_triangular_row(variable, &mut rng),
+                        make_random_elementary_triangular_row(variable, &mut rng),
                     ]),
                 ))
             })
         };
 
-        let make_random_array =
-            |rng: &mut ThreadRng| -> [Degree; N] { core::array::from_fn(|_| rng.gen()) };
-
         // good chance to have det != 0, it's a benchmark anyways
         let make_random_monomial = |rng: &mut ThreadRng| {
             TropicalAutomorphism::monomial(
-                core::array::from_fn(|_| make_random_array(rng)),
-                make_random_array(rng).map(TropicalInt::from),
+                core::array::from_fn(|_| core::array::from_fn(|_| rng.gen_range(0..255))),
+                core::array::from_fn(|_| rng.gen_range(-127..127)).map(TropicalInt::from),
             )
         };
 
@@ -700,7 +711,7 @@ mod tests {
             let mut rng = rand::thread_rng();
 
             make_random_monomial(&mut rng)
-                .compose(make_random_triangular(&mut rng))
+                .compose(make_random_triangular())
                 .compose(make_random_monomial(&mut rng))
             // .compose(make_random_triangular(&mut rng))
             // .compose(make_random_monomial(&mut rng));
