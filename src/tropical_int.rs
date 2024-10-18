@@ -3,7 +3,7 @@ use core::fmt;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign};
 use std::iter::Sum;
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum TropicalInt {
     AdditiveIdentity,
     Integer(i64),

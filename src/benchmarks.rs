@@ -7,7 +7,9 @@ use crate::{
     tropical_polynomial::{Degree, TropicalPolynomial},
 };
 
-fn make_random_elementary_triangular_row<const N: usize>(i: usize) -> ([Degree; N], TropicalInt) {
+pub fn make_random_elementary_triangular_row<const N: usize>(
+    i: usize,
+) -> ([Degree; N], TropicalInt) {
     let mut rng = rand::thread_rng();
     (
         core::array::from_fn(|j| if j <= i { 0 } else { rng.gen_range(0..=31) }),
@@ -15,7 +17,7 @@ fn make_random_elementary_triangular_row<const N: usize>(i: usize) -> ([Degree; 
     )
 }
 
-fn make_random_triangular<const N: usize>() -> TropicalAutomorphism<N> {
+pub fn make_random_2terms_triangular<const N: usize>() -> TropicalAutomorphism<N> {
     (0..N - 1).fold(TropicalAutomorphism::identity(), |acc, variable| {
         acc.compose(TropicalAutomorphism::elementary_triangular(
             variable,
@@ -28,7 +30,7 @@ fn make_random_triangular<const N: usize>() -> TropicalAutomorphism<N> {
 }
 
 // good chance to have det != 0, it's a benchmark anyways
-fn make_random_monomial<const N: usize>() -> TropicalAutomorphism<N> {
+pub fn make_random_monomial<const N: usize>() -> TropicalAutomorphism<N> {
     let mut rng = rand::thread_rng();
 
     TropicalAutomorphism::monomial(
@@ -73,9 +75,9 @@ fn bench_6d_triangular_monomial_triangular_composition(bencher: &mut Bencher) {
 }
 
 fn compose_triangular_monomial_triangular<const N: usize>() -> TropicalAutomorphism<N> {
-    let a = make_random_triangular();
+    let a = make_random_2terms_triangular();
     let b = make_random_monomial();
-    let c = make_random_triangular();
+    let c = make_random_2terms_triangular();
 
     let result = a.compose(b).compose(c);
     println!(
@@ -91,7 +93,7 @@ fn compose_triangular_monomial_triangular<const N: usize>() -> TropicalAutomorph
 
 fn compose_monomial_triangular_monomial<const N: usize>() -> TropicalAutomorphism<N> {
     let a = make_random_monomial();
-    let b = make_random_triangular();
+    let b = make_random_2terms_triangular();
     let c = make_random_monomial();
     let result = a.compose(b).compose(c);
     println!(
@@ -107,9 +109,9 @@ fn compose_monomial_triangular_monomial<const N: usize>() -> TropicalAutomorphis
 
 fn compose_public_key<const N: usize>() -> TropicalAutomorphism<N> {
     let a = make_random_monomial();
-    let b = make_random_triangular();
+    let b = make_random_2terms_triangular();
     let c = make_random_monomial();
-    let d = make_random_triangular();
+    let d = make_random_2terms_triangular();
     let e = make_random_monomial();
     let result = a.compose(b.compose(c)).compose(d.compose(e));
     println!(

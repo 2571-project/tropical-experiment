@@ -8,4 +8,6 @@ mod tropical_polynomial;
 mod tropical_rational;
 
 #[cfg(test)]
+mod auction;
+#[cfg(test)]
 mod benchmarks;
