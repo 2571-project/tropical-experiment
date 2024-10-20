@@ -1,0 +1,250 @@
+\documentclass{article}
+
+% Packages
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{mathtools}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+% Document information
+\title{Tropical Geometry with Applications to Combinatorial Auctions}
+\author{Eduardo and Ruben}
+\date{\today}
+
+\newcommand{\NN}{\mathbb{N}_{\geq 0}}
+\newcommand{\ZZ}{\mathbb{Z}}
+\newcommand{\QQ}{\mathbb{Q}}
+\newcommand{\RR}{\mathbb{R}}
+
+\newtheorem{lemma}{Lemma}
+\newtheorem{definition}{Definition}
+\newtheorem{example}{Example}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+This text is a collection of thoughts.
+The topic is Tropical Geometry with applications to Combinatorial Auctions.
+
+
+\section{Tropical Geometry}
+Our setting will be using the following notation throughout.
+Let $T$ be the set $\NN \cup \{\epsilon\}$.
+Let $\oplus$ be the operation on $T$ defined by $a \oplus b = \max\{a,b\}$.
+Let $\otimes$ be the operation on $T$ defined by $a \otimes b = a + b$.
+We shall refer to $(T,\oplus,\otimes)$ as the tropical semiring of the nonnegative natural numbers.
+
+\begin{lemma}
+	\begin{enumerate}
+		\item $a \oplus b = b \oplus a$ for all $a,b \in T$.
+		\item $a \otimes b = b \otimes a$ for all $a,b \in T$.
+		\item $a \oplus (b \oplus c) = (a \oplus b) \oplus c$ for all $a,b,c \in T$.
+		\item $a \otimes (b \otimes c) = (a \otimes b) \otimes c$ for all $a,b,c \in T$.
+		\item $a \otimes \epsilon = \epsilon \otimes a = \epsilon$ for all $a \in T$.
+		\item $a \oplus \epsilon = \epsilon \oplus a = a$ for all $a \in T$.
+		\item $a \otimes 0 = 0 \otimes a = \epsilon$ for all $a \in T$.
+		\item $a \oplus 0 = 0 \oplus a = a$ for all $a \in T$.
+	\end{enumerate}
+\end{lemma}
+
+\subsection{Polynomials}
+Since $T$ is a semiring, we can define polynomials over $T$ in the usual way.
+
+\subsubsection{The Usual Properties}
+Some of the usual properties of polynomials remain preserved in the tropical semiring.
+\begin{lemma}
+	Let $f, g \in T[x]$.
+	\begin{enumerate}
+		\item $\deg(f \otimes g) = \deg(f) + \deg(g)$.
+		\item The units of $T[x]$ are the units of $T$.
+		\item $T[x]$ is a (semi-) integral domain.
+		\item We get to define $T[X, Y]$ as $T[X][Y]$ inductively.
+	\end{enumerate}
+\end{lemma}
+
+We would like to have localization in the tropical semiring. Luckily, ideals behave as we expect them.
+
+\begin{definition}
+	A subset $I$ of a semiring $S$ is called an \emph{ideal} of $T$ if $a, b \in I$, $r \in S$ implies $a + b \in I$ and $r \otimes a \in I$.
+\end{definition}
+\begin{lemma}
+	Let $I$ be an ideal of a semiring $S$.
+	Then $S/I$ is a semiring.
+\end{lemma}
+
+\begin{lemma}
+	$(x^2)$ is an ideal of $T[x]$.
+\end{lemma}
+\begin{proof}
+	Let $f, g \in (x^2)$.
+	Then $f \oplus g = x^2 \otimes f' \oplus x^2 \otimes g' = x^2 \otimes (f' \oplus g') \in (x^2)$.
+	Let $r \in T[x]$.
+	Then $r \otimes f = r \otimes (x^2 \otimes f') = (r \otimes x^2) \otimes f' \in (x^2)$.
+\end{proof}
+
+This tells us the localization $T[x] / (x^2)$ is well-defined, giving us equivalence classes of polynomials.
+
+\subsubsection{The Unusual Properties}
+There is some funny behaviour with polynomials in the tropical semiring that we should be aware of.
+
+\begin{lemma}
+	Polynomials and their functional values are not 1-1.
+\end{lemma}
+\begin{proof}
+	Consider $f = x^2 \oplus 1x \oplus 2$ and $g = x^2 \oplus 2x \oplus 2$.
+	Then $f(\epsilon) = g(\epsilon) = 2$.
+	Also $f(0) = f(1) = g(0) = g(1) = 2$.
+	Finally, $f(a) = g(a) = a^2$ for all $a \geq 2$.
+
+	So $f \neq g$ but $f(a) = g(a)$ for all $a \in T$.
+\end{proof}
+
+This relationship does define an equivalence relation on $T[x]$, but we won't go deeper into this until we need to.
+
+\subsubsection{Notes on Polynomials}
+There are some more nice and funny properties of polynomials over a tropical semiring.
+Until we need them, those can be found here: \url{https://scholarsarchive.byu.edu/cgi/viewcontent.cgi?article=2504&context=etd}.
+For example, FTA holds under certain conditions, roots can be defined, and we have Bezout's theorem.
+
+\section{Combinatorial Auctions}
+A combinatorial auction is an auction where bidders can make contingent bids on bundles of items.
+A bid consists of a price and a bundle of items.
+The auctioneer tries to resolve the auction by maximizing the total revenue.
+
+\subsection{Encoding a Combinatorial Auction as a Tropical Polynomial}
+We will explore multiple ways to encode a combinatorial auction as a tropical polynomial.
+\begin{enumerate}
+	\item A polynomial is a product of bids, where each bid is encoded as a polynomial.
+	\item The auction is a polynomial, and each bid is a evaluations of the polynomial.
+\end{enumerate}
+
+The second option seems more natural, but has some problems.
+For example, a bid of $3$ on items $1,2,3$ cannot necessarily be encoded as (1,1,1), since the value is fully contingent on the bundle.
+The only natural way to encode this bid as an evaluation would be to encode it as either $(3,3,3)$, or $\{(3,0,0), (0,3,0), (0,0,3)\}$.
+The latter removes contingency, and the former requires normalization in the polynomial.
+For example, a monomial $x_1 x_2 x_3$ would have to be normalized by dividing by 3.
+But we have no natural division in the tropical semiring.
+So already, we have to jump through hoops to encode the bids as evaluations of a polynomial.
+For this reason, we will first explore the first option.
+
+\subsection{Encoding bids as polynomials}
+In this section we formalize the combinatorial auction as a tropical polynomial.
+More concretely, a tropical auction on $i$ items is a polynomial $P(x_i)$ in the localization $T[x_i] / (x_i^2)$.
+The localization is necessary to prevent double allocations of items.
+We can encode a combinatorial auction as follows.
+
+\begin{definition}
+	A tropical bid on a set of items $I$ with value $b$ is denoted as a polynomial $ p(x_i) = 0 \oplus b\bigotimes_{i \in I} x_i$.
+\end{definition}
+
+This has some nice properties. For example, the $\oplus$ of two bids on the same items leaves only the maximum bid.
+Multiplying two bids gives the sum of the two bids, plus the product of the bids, which represents the realization of both bids.
+We can easily identify invalid combinations of bids by looking at the order of the factors in the monomials.
+Using these properties, we can encode a combinatorial auction as follows.
+
+\begin{definition}
+	A tropical auction is a product of tropical bids.
+\end{definition}
+
+We will now explore this encoding with some examples.
+
+\subsubsection{Encoding the Auction as a Polynomial}
+
+\begin{example}
+	Suppose an auction with three bids:
+	\begin{enumerate}
+		\item Bidder 1 bids on item 1 with value 1.
+		\item Bidder 2 bids on item 2 with value 1.
+		\item Bidder 3 bids on item 3 with value 1.
+	\end{enumerate}
+	Each bid is a monomial $p_j(x_i) = 0 + 1 x_j$.
+	The auction becomes the product
+	\begin{align*}
+		P(x_i) & = p_1(x_i) \otimes p_2(x_i) \otimes p_3(x_i)                                                                       \\
+		       & = (0 \oplus 1 x_1) \otimes (0 \oplus 1 x_2) \otimes (0 \oplus 1 x_3)                                               \\
+		       & = 0 \oplus 1 x_1 \oplus 1 x_2 \oplus 1 x_3 \oplus 2 x_1 x_2 \oplus 2 x_1 x_3 \oplus 2 x_2 x_3 \oplus 3 x_1 x_2 x_3 \\
+	\end{align*}
+
+	It is tempting to further simplify this polynomial to $P(x_i) = 0 \oplus 3 x_1 x_2 x_3$, since for any $(x_i) \in \NN$ we have $P(x_i) = 3 x_1 x_2 x_3$.
+	It is important to remember that $\epsilon \in T$, and therefore, for example, $P(\epsilon, 1, 1) = 2$.
+	So we cannot simplify the polynomial further.
+	However, this polynomial does encode the full outcome space of the auction.
+	We see that the maximum revenue is $P(1,1,1) = 3$.
+\end{example}
+
+\begin{example}
+	Suppose an auction with three bids
+	\begin{enumerate}
+		\item Bidder 1 bids on item 1 with value 1.
+		\item Bidder 2 bids on item 1, 2 with value 2.
+		\item Bidder 3 bids on item 2, 3 with value 2.
+	\end{enumerate}
+	The bids are
+	\begin{align*}
+		p_1(x_i) & = 0 \oplus 1 x_1              \\
+		p_2(x_i) & = 0 \oplus 2 x_1 \oplus 2 x_2 \\
+		p_3(x_i) & = 0 \oplus 2 x_2 \oplus 2 x_3
+	\end{align*}
+
+	The auction becomes the product
+	\begin{align*}
+		P(x_i) & = p_1(x_i) \otimes p_2(x_i) \otimes p_3(x_i)                                                                      \\
+		       & = (0 \oplus 1 x_1) \otimes (0 \oplus 2 x_1 \oplus 2 x_2) \otimes (0 \oplus 2 x_2 \oplus 2 x_3)                    \\
+		       & = 0 \oplus 1 x_1 \oplus 2 x_1 x_2 \oplus 2 x_2 x_3 \oplus 2 x_1^2 x_2 \oplus 3 x_1 x_2 x_3 \oplus 4 x_1 x_2^2 x_3
+	\end{align*}
+
+	Each higher order term represents a double allocation of an item.
+	These higher order terms vanish under localization.
+	\begin{align*}
+		P(x_i) & = 0 \oplus 1 x_1 \oplus 2 x_1 x_2 \oplus 2 x_2 x_3 \oplus 3 x_1 x_2 x_3
+	\end{align*}
+
+	We see that the maximum revenue is $P(1,1,1) = 3$.
+\end{example}
+
+\subsubsection{Updating the Auction Polynomial}
+This example shows that the polynomial encoding of the auction can be updated to reflect new bids.
+
+\begin{example}
+	Suppose we have the same auction as in the previous example, with polynomial $P(x_i) = 0 \oplus 1 x_1 \oplus 2 x_1 x_2 \oplus 2 x_2 x_3 \oplus 3 x_1 x_2 x_3$.
+	Now a new bid comes in from bidder 4, who bids on item 1 with value 2.
+	We compute the new polynomial
+	\begin{align*}
+		P'(x_i) & = P(x_i) \otimes (0 \oplus 2 x_1)                                                                                                                                  \\
+		        & = (0 \oplus 1 x_1 \oplus 2 x_1 x_2 \oplus 2 x_2 x_3 \oplus 3 x_1 x_2 x_3) \otimes (0 \oplus 2 x_1)                                                                 \\
+		        & = 0 \oplus 1 x_1 \oplus 2 x_1 x_2 \oplus 2 x_2 x_3 \oplus 3 x_1 x_2 x_3 \oplus 2 x_1 \oplus 3 x_1^2 \oplus 3 x_1^2 x_2 \oplus 4 x_1 x_2 x_3 \oplus 5 x_1^2 x_2 x_3 \\
+		        & = 0 \oplus 2 x_1 \oplus 2 x_1 x_2 \oplus 2 x_2 x_3 \oplus 4 x_1 x_2 x_3                                                                                            \\
+	\end{align*}
+\end{example}
+
+\subsubsection{Removing Items from the Auction}
+This example shows that the polynomial encoding supports the removal of items from the auction.
+
+\begin{example}
+	Suppose we have the same updated auction as in the previous example.
+	Suppose for some reason, we decide that item 1 is no longer available.
+	We can compute the new auction polynomial by setting $x_1 = \epsilon$.
+	\begin{align*}
+		P'(x_i | x_1 = \epsilon) & = 0 \oplus 2 \epsilon \oplus 2 \epsilon x_2 \oplus 2 x_2 x_3 \oplus 3 \epsilon x_2 x_3 \oplus 4 \epsilon x_2 x_3 \\
+		                         & = 0 \oplus 2 x_2 x_3
+	\end{align*}
+\end{example}
+
+\subsubsection{Notes on the Auction Polynomial}
+There are some drawbacks to this encoding.
+It is not clear how to recover the bids from the polynomial.
+For example, the polynomial $P(x_i) = 0 \oplus 3 x_1 x_2 x_3$ does not tell us if the this polynomial was the result of
+\begin{enumerate}
+	\item One single bid on items 1, 2, 3 with value 3.
+	\item Three bids on items 1, 2, 3 with value 1.
+	\item One bid on item 1 with value 1 and one bid on items 2, 3 with value 2.
+	\item etc.
+\end{enumerate}
+
+It remains necessary to keep track of the bids seperately.
+
+\end{document}
