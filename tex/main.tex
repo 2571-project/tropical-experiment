@@ -32,11 +32,19 @@ The topic is Tropical Geometry with applications to Combinatorial Auctions.
 
 
 \section{Tropical Geometry}
-Our setting will be using the following notation throughout.
-Let $T$ be the set $\NN \cup \{\epsilon\}$.
-Let $\oplus$ be the operation on $T$ defined by $a \oplus b = \max\{a,b\}$.
-Let $\otimes$ be the operation on $T$ defined by $a \otimes b = a + b$.
-We shall refer to $(T,\oplus,\otimes)$ as the tropical semiring of the nonnegative natural numbers.
+
+\subsection{Brief Introduction to the Tropical Semiring}
+
+\begin{definition}
+	The tropical numbers are the set $\NN \cup \{\epsilon\}$ with the following operations:
+	\begin{align*}
+		a \oplus b  & = \max\{a,b\} \\
+		a \otimes b & = a + b
+	\end{align*}
+\end{definition}
+
+We can also define $\oplus$ as $\min$ without changing the properties of the tropical semiring.
+In this text, we will use the notation $T$ to denote the tropical numbers.
 
 \begin{lemma}
 	\begin{enumerate}
@@ -90,6 +98,12 @@ This tells us the localization $T[x] / (x^2)$ is well-defined, giving us equival
 
 \subsubsection{The Unusual Properties}
 There is some funny behaviour with polynomials in the tropical semiring that we should be aware of.
+\begin{enumerate}
+	\item Derivatives are not well-defined.
+	\item Polynomials are not 1-1 with their functional values.
+	\item The graph of a polynomial is a piecewise linear function.
+	\item The roots of a polynomial are the values where the graph is not differentiable (in the usual sense).
+\end{enumerate}
 
 \begin{lemma}
 	Polynomials and their functional values are not 1-1.
@@ -104,6 +118,12 @@ There is some funny behaviour with polynomials in the tropical semiring that we 
 \end{proof}
 
 This relationship does define an equivalence relation on $T[x]$, but we won't go deeper into this until we need to.
+
+\subsubsection{Graphs of Polynomials}
+Note that $a \otimes x^b = a + bx$. So the graph of a polynomial is always a piecewise linear function.
+
+\subsubsection{Roots of Polynomials}
+The roots of a polynomial are the values $a$ where the graph of the polynomial is not differentiable.
 
 \subsubsection{Notes on Polynomials}
 There are some more nice and funny properties of polynomials over a tropical semiring.
