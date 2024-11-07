@@ -1,6 +1,5 @@
 use core::fmt;
 use core::ops::{Add, AddAssign, Mul, MulAssign};
-use rayon::prelude::*;
 use std::collections::HashMap;
 use std::iter::Sum;
 
@@ -22,7 +21,14 @@ impl<const N: usize> TropicalPolynomial<N> {
     }
 
     pub fn add_term(&mut self, multi_degree: [Degree; N], coefficient: TropicalInt) {
-        self.terms.insert(multi_degree, coefficient);
+        let current_coefficient = self
+            .terms
+            .get(&multi_degree)
+            .unwrap_or(&TropicalInt::AdditiveIdentity);
+
+        if coefficient + *current_coefficient == coefficient {
+            self.terms.insert(multi_degree, coefficient);
+        }
     }
 
     pub fn get_term(&self, multi_degree: &[Degree; N]) -> Option<&TropicalInt> {
@@ -57,17 +63,24 @@ impl<const N: usize> TropicalPolynomial<N> {
             return Self::multiplicative_identity();
         }
 
-        Self::from(
-            self.terms
-                .iter()
-                .map(|(multi_degree, coefficient)| {
-                    (
-                        core::array::from_fn(|index| multi_degree[index] * power),
-                        coefficient.pow(power),
-                    )
-                })
-                .collect::<Vec<([Degree; N], TropicalInt)>>(),
-        )
+        // TODO: parallelize
+        (1..=power).fold(Self::multiplicative_identity(), |acc, _| {
+            acc.mul(self.clone())
+        })
+
+        // README: this is more efficient for evaluation
+        // but not for formally computing the polynomial terms
+        // Self::from(
+        //     self.terms
+        //         .iter()
+        //         .map(|(multi_degree, coefficient)| {
+        //             (
+        //                 core::array::from_fn(|index| multi_degree[index] * power),
+        //                 coefficient.pow(power),
+        //             )
+        //         })
+        //         .collect::<Vec<([Degree; N], TropicalInt)>>(),
+        // )
     }
 
     pub fn evaluate(&self, variables: [TropicalInt; N]) -> TropicalInt {
@@ -88,11 +101,19 @@ impl<const N: usize> TropicalPolynomial<N> {
 
 // TODO: implement for array and slices
 impl<const N: usize> From<Vec<([Degree; N], TropicalInt)>> for TropicalPolynomial<N> {
-    fn from(value: Vec<([Degree; N], TropicalInt)>) -> Self {
-        Self {
-            // TODO: not clone etc
-            terms: HashMap::from_iter(value.iter().cloned()),
+    fn from(terms: Vec<([Degree; N], TropicalInt)>) -> Self {
+        let mut result = HashMap::new();
+        for term in terms {
+            let current_coefficient = result
+                .get(&term.0)
+                .unwrap_or(&TropicalInt::AdditiveIdentity);
+
+            if term.1 + *current_coefficient == term.1 {
+                result.insert(term.0, term.1);
+            }
         }
+
+        Self { terms: result }
     }
 }
 
@@ -140,13 +161,21 @@ impl<const N: usize> Mul for TropicalPolynomial<N> {
                     new_exponents[i] = exponents1[i] + exponents2[i];
                 }
 
-                let new_coefficient = coefficient1.clone() * coefficient2.clone();
+                let coefficient_increment = coefficient1.clone() * coefficient2.clone();
 
-                let current_coefficient = result
-                    .terms
-                    .entry(new_exponents)
-                    .or_insert_with(|| TropicalInt::from(0));
-                *current_coefficient = current_coefficient.clone() + new_coefficient;
+                match coefficient_increment {
+                    // README: it's probably slower to branch but we don't want to have terms in the map with coefficient equal to the additive identity, prefering to omit them.
+                    TropicalInt::AdditiveIdentity => {}
+                    TropicalInt::Integer(_) => {
+                        let _ = result
+                            .terms
+                            .entry(new_exponents)
+                            .and_modify(|current_coefficient| {
+                                *current_coefficient += coefficient_increment
+                            })
+                            .or_insert_with(|| coefficient_increment);
+                    }
+                }
             }
         }
 
@@ -260,7 +289,21 @@ mod tests {
     }
 
     #[test]
-    fn test_poly_mul() {
+    fn test_poly_mul_2() {
+        let test_table: Vec<[TropicalPolynomial<2>; 3]> = vec![[
+            // README: this test case is subtle and it concerns how we deal with the absorptions of multiplication by the additive identity, not sure this is the best way to deal with this but it ensures we don't introduce ill-definedness to our representation
+            TropicalPolynomial::monomial([2, 0], TropicalInt::from(0)),
+            TropicalPolynomial::constant(TropicalInt::AdditiveIdentity),
+            TropicalPolynomial::new(),
+        ]];
+
+        for [a, b, c] in test_table {
+            assert_eq!(a * b, c);
+        }
+    }
+
+    #[test]
+    fn test_poly_mul_3() {
         let test_table: Vec<[TropicalPolynomial<3>; 3]> = vec![
             [
                 TropicalPolynomial::from(vec![([1, 1, 0], TropicalInt::from(5))]),
@@ -368,6 +411,37 @@ mod tests {
 
         for (poly, vars, result) in test_table {
             assert_eq!(poly.evaluate(vars), result);
+        }
+    }
+
+    #[test]
+    fn test_simplify_dominated_terms() {
+        let test_table: Vec<(TropicalPolynomial<2>, TropicalPolynomial<2>)> = vec![
+            (
+                TropicalPolynomial::from(vec![
+                    ([2, 3], TropicalInt::Integer(5)),
+                    ([2, 3], TropicalInt::Integer(4)),
+                ]),
+                TropicalPolynomial::from(vec![([2, 3], TropicalInt::Integer(5))]),
+            ),
+            (
+                TropicalPolynomial::from(vec![
+                    ([2, 2], TropicalInt::Integer(6)),
+                    ([3, 2], TropicalInt::Integer(7)),
+                    ([2, 3], TropicalInt::Integer(4)),
+                    ([2, 3], TropicalInt::Integer(5)),
+                ]),
+                TropicalPolynomial::from(vec![
+                    ([2, 2], TropicalInt::Integer(6)),
+                    ([3, 2], TropicalInt::Integer(7)),
+                    ([2, 3], TropicalInt::Integer(5)),
+                ]),
+            ),
+        ];
+
+        for (p, q) in test_table {
+            println!("p = {p} | q = {q}");
+            assert_eq!(p, q);
         }
     }
 }
