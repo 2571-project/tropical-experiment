@@ -50,6 +50,7 @@ fn alice_bob_combinatorial_bids() -> [TropicalPolynomial<2>; 2] {
 }
 
 enum ToyAuctionResult {
+    #[allow(dead_code)]
     SeparateBidsXY(usize, usize),
     JointBidXY(usize),
     // shouldn't really happen I think...

@@ -2,10 +2,10 @@
 #![feature(test)]
 extern crate test;
 
-mod tropical_automorphism;
-mod tropical_int;
-mod tropical_polynomial;
-mod tropical_rational;
+pub mod tropical_automorphism;
+pub mod tropical_int;
+pub mod tropical_polynomial;
+pub mod tropical_rational;
 
 #[cfg(test)]
 mod auction;
