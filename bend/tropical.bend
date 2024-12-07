@@ -17,21 +17,36 @@ Tropical/mul  Tropical/NegInf  rght            =  Tropical/NegInf
 Tropical/mul  left             Tropical/NegInf =  Tropical/NegInf
 Tropical/mul (Tropical/Int l) (Tropical/Int r) = (Tropical/Int (+ l r))
 
-write_u24/go (n: u24) (acc: (List u24)): (List u24)
-write_u24/go  n        acc             =
-  if (> n 10) {
-    (write_u24/go (/ n 10) (List/Cons (+ (% n 10) 48) acc))
+write_u24/list (n: u24) (acc: (List u24)): (List u24)
+write_u24/list  n        acc             =
+  if (>= n 10) {
+    (write_u24/list (/ n 10) (List/Cons (+ (% n 10) 48) acc))
   } else {
     (List/Cons (+ (% n 10) 48) acc)
   }
 
+write_u24/diff_list (n: u24): ((List u24) -> (List u24))
+write_u24/diff_list  n      =
+  if (>= n 10) {
+    (DiffList/append (write_u24/diff_list (/ n 10)) (+ (% n 10) 48))
+  } else {
+    (DiffList/wrap (+ (% n 10) 48))
+  }
+
 write_u24 (n: u24):  String
-write_u24  n      = (String/decode_utf8 (write_u24/go n List/Nil))
+write_u24  n      = (String/decode_utf8 (write_u24/list n List/Nil))
+
+Tropical/write/diff_list (trop: Tropical):  ((List u24) -> (List u24))
+Tropical/write/diff_list Tropical/NegInf  = (DiffList/cons (DiffList/cons (DiffList/cons (DiffList/wrap 158) 136) 226) 45)
+Tropical/write/diff_list (Tropical/Int n) = (write_u24/diff_list n)
 
 Tropical/write (trop: Tropical):   String
 Tropical/write  Tropical/NegInf  = "-∞"
 Tropical/write (Tropical/Int n)  = (write_u24 n)
 
+# readme: an important property to formalize is (Node (Leaf a) (NegInf)) = (Leaf a)
+# but it's not true in (Node (Node a b) (NegInf)) because that would unshift the degree
+# of b
 type Poly:
   Leaf { val: Tropical }
   Node { ~left, ~right }
@@ -63,67 +78,41 @@ Poly/sum (Poly/Leaf val) (Poly/Node l r) = (Poly/Node (Poly/sum l (Poly/Leaf val
 Poly/sum (Poly/Node l r) (Poly/Leaf val) = (Poly/Node (Poly/sum l (Poly/Leaf val)) r)
 Poly/sum (Poly/Node a b) (Poly/Node c d) = (Poly/Node (Poly/sum a c) (Poly/sum b d))
 
-Poly/mul (l: Poly)       (r: Poly):         Poly
-Poly/mul (Poly/Leaf Tropical/NegInf) _   = (Poly/Leaf Tropical/NegInf)
-Poly/mul  _  (Poly/Leaf Tropical/NegInf) = (Poly/Leaf Tropical/NegInf)
-Poly/mul (Poly/Leaf lll) (Poly/Leaf rrr) = (Poly/Leaf (Tropical/mul lll rrr))
-Poly/mul (Poly/Leaf val) (Poly/Node l r) = (Poly/Node (Poly/mul (Poly/Leaf val) l) (Poly/mul (Poly/Leaf val) r))
-Poly/mul (Poly/Node l r) (Poly/Leaf val) = (Poly/Node (Poly/mul (Poly/Leaf val) l) (Poly/mul (Poly/Leaf val) r))
-Poly/mul (Poly/Node a b) (Poly/Node c d) = (Poly/Node (Poly/mul a c) (Poly/Node (Poly/sum (Poly/mul a d) (Poly/mul b c)) (Poly/mul b d)))
-# example calculation for the rule above:
-#
-#                       (l)                  (*)                 (r)
-#           (a)                     (b)       |         (c)             (d)
-#       (w)     (x)             (y)     (z)   |     (g)     (i)     (j)     (k)
-#   |----------------------------------------------------------------------------|
-#
-#       (* l r) = (* (V a b) (V c d))
-#               = (V (* a c) (V (+ (* a d) (* b c)) (* b d)))
-#
-#       (* a c) = (* (V w x) (V g i))
-#               = (V (* w g) (V (+ (* w i) (* x g)) (* x i)))
-#
-#       (* b d) = (* (V y z) (V j k))
-#               = (V (* y j) (V (+ (* y k) (* z j)) (* z k)))
-#
-#       (* a d) = (* (V w x) (V j k))
-#               = (V (* w j) (V (+ (* w k) (* x j)) (* x k)))
-#               = s
-#
-#       (* b c) = (* (V y z) (V g i))
-#               = (V (* y g) (V (+ (* y i) (* z g)) (* z i)))
-#               = t
-#
-#       (+ s t) = (+ ((V (* w j) (V (+ (* w k) (* x j)) (* x k))) (V (* y g) (V (+ (* y i) (* z g)) (* z i))))
-#               = (V (+ (* w j) (* y g)) (+ (V (+ (* w k) (* x j)) (* x k)) (V (+ (* y i) (* z g)) (* z i))))
-#               = (V (+ (* w j) (* y g)) (V (+ (+ (* w k) (* x j)) (+ (* y i) (* z g))) (+ (* x k) (* z i))))
-#
-#       (* l r) = (V (* a c) (V (+ s t) (* b d)))
-#               = (V
-#                   (V
-#                       (* w g)
-#                       (V
-#                           (+ (* w i) (* x g))
-#                           (* x i)
-#                       )
-#                   )
-#                   (V
-#                       (V
-#                           (+ (* w j) (* y g))
-#                           (V
-#                               (+ (+ (* w k) (* x j)) (+ (* y i) (* z g)))
-#                               (+ (* x k) (* z i))
-#                           )
-#                       )
-#                       (V
-#                           (* y j)
-#                           (V
-#                               (+ (* y k) (* z j))
-#                               (* z k)
-#                           )
-#                       )
-#                   )
-#               )
+Nat/sum (l: Nat)    (r: Nat):   Nat
+Nat/sum (Nat/Zero)   r       =  r
+Nat/sum (Nat/Succ l) r       = (Nat/Succ (Nat/sum l r))
+
+Degree/sum (l: (List Nat))   (r: (List Nat)):    (List Nat)
+Degree/sum (List/Nil)         r                =  r
+Degree/sum  l                (List/Nil)        =  l
+Degree/sum (List/Cons lh lt) (List/Cons rh rt) = (List/Cons (Nat/sum lh rh) (Degree/sum lt rt))
+
+# todo(?): create a datatype equivalent to bool but with variants Left & Right
+Degree/step (deg: (List Nat))  (dir: u24):  (List Nat)
+Degree/step (List/Nil)          dir       = (Degree/step (List/Cons Nat/Zero List/Nil) dir)
+Degree/step (List/Cons n tail)  dir       =
+ if (== 0 dir) {
+   (List/Cons Nat/Zero (List/Cons n tail))
+ } else {
+   (List/Cons (Nat/Succ n) tail)
+ }
+
+Poly/inner_mul (lp: Poly) (ld: (List Nat)) (rp: Poly) (rd: (List Nat)):  Poly
+Poly/inner_mul (Poly/Leaf lll) ld (Poly/Leaf rrr) rd = (Poly/monomial
+  (Degree/sum (List/reverse ld) (List/reverse rd))
+  (Tropical/mul lll rrr)
+)
+Poly/inner_mul lp ld (Poly/Node a b) rd = (Poly/sum
+  (Poly/inner_mul lp ld a (Degree/step rd 0))
+  (Poly/inner_mul lp ld b (Degree/step rd 1))
+)
+Poly/inner_mul (Poly/Node a b) ld rp rd = (Poly/sum
+  (Poly/inner_mul a (Degree/step ld 0) rp rd)
+  (Poly/inner_mul b (Degree/step ld 1) rp rd)
+)
+
+Poly/mul (l: Poly) (r:Poly):  Poly
+Poly/mul  l         r      = (Poly/inner_mul l (List/Cons Nat/Zero List/Nil) r (List/Cons Nat/Zero List/Nil))
 
 # todo: make this parallel (i.e. balance the expression tree, that is currently a list)
 Poly/pow (poly: Poly) (exp: Nat):     Poly
@@ -135,27 +124,87 @@ Poly/eval_origin (Poly/Leaf val) = val
 Poly/eval_origin (Poly/Node l r) = (Tropical/sum (Poly/eval_origin l) (Poly/eval_origin r))
 
 Poly/get (poly: Poly)    (deg: (List Nat)):               Poly
-Poly/get  p              (List/Nil)                    =  p
+Poly/get  poly           (List/Nil)                    =  poly
 Poly/get (Poly/Leaf val) (List/Cons (Nat/Succ n) tail) = (Poly/add_id)
 Poly/get (Poly/Leaf val) (List/Cons (Nat/Zero)   tail) = (Poly/get (Poly/Leaf val) tail)
 Poly/get (Poly/Node l r) (List/Cons (Nat/Zero)   tail) = (Poly/get l tail)
 Poly/get (Poly/Node l r) (List/Cons (Nat/Succ n) tail) = (Poly/get r (List/Cons n tail))
 
-# todo: complete this
-# Poly/write/go (p: Poly)       (deg: (List Nat)): ((List u24) -> (List u24))
-# Poly/write/go (Poly/Leaf val)  deg             = (DiffList/cons ())
-# Poly/write/go (Poly/Node l r)  deg             = (DiffList/concat (Poly/write/go l (Nat/Succ var)) (Poly/write/go r var))
+Nat/to_u24 (nat: Nat):   u24
+Nat/to_u24  Nat/Zero    = 0
+Nat/to_u24 (Nat/Succ n) = (+ 1 (Nat/to_u24 n))
 
-# Poly/write (p: Poly):  String
-# Poly/write  p       = (String/decode_utf8 (DiffList/to_list (Poly/write/go p Nat/Zero)))
+# readme: ideally this would know if it's a 3+ var poly to then only print x_i
+# but that would require a bit of refactoring
+Poly/write/var (var: u24): ((List u24) -> (List u24))
+Poly/write/var  var      = switch var {
+  0: (DiffList/wrap 120)
+  1: (DiffList/wrap 121)
+  2: (DiffList/wrap 122)
+  _: (DiffList/cons 120 (DiffList/cons 95 (write_u24/diff_list var)))
+}
 
-main = (Poly/get
+Poly/write/degree (deg: Nat): ((List u24) -> (List u24))
+Poly/write/degree  deg = (DiffList/cons (write_u24/diff_list (Nat/to_u24 deg)) 94)
+
+Poly/write/monomial (var: u24) (deg: (List Nat)):            ((List u24) -> (List u24))
+Poly/write/monomial  _         (List/Nil)                  = (DiffList/new)
+Poly/write/monomial  var       (List/Cons (Nat/Zero)   dt) = (Poly/write/monomial (+ 1 var) dt)
+Poly/write/monomial  var       (List/Cons (Nat/Succ n) dt) = (DiffList/concat
+  (Poly/write/var var)
+  (DiffList/concat
+    (Poly/write/degree (Nat/Succ n))
+    (Poly/write/monomial (+ 1 var) dt)
+  )
+)
+
+Poly/write/crawl (p: Poly)                    (deg: (List Nat)): ((List u24) -> (List u24))
+Poly/write/crawl (Poly/Leaf  Tropical/NegInf)  _               = (DiffList/new)
+Poly/write/crawl (Poly/Leaf (Tropical/Int n))  deg             = (DiffList/concat
+  (write_u24/diff_list n)
+  (Poly/write/monomial 0 (List/reverse deg))
+)
+Poly/write/crawl (Poly/Node a b)               deg             = (DiffList/concat
+  (Poly/write/crawl a (Degree/step deg 0))
+  (DiffList/concat
+    (DiffList/cons (DiffList/cons (DiffList/wrap 32) 43) 32)
+    (Poly/write/crawl b (Degree/step deg 1))
+  )
+)
+
+Poly/write (p: Poly):  String
+Poly/write  p       = (String/decode_utf8 (DiffList/to_list (Poly/write/crawl p List/Nil)))
+
+main = (Poly/write
   (Poly/mul
-    (Poly/monomial [(Nat/Succ Nat/Zero), (Nat/Succ (Nat/Succ Nat/Zero))] (Tropical/Int 2))
-    (Poly/sum
-      (Poly/monomial [(Nat/Succ Nat/Zero), (Nat/Succ Nat/Zero)] (Tropical/Int 1))
-      (Poly/monomial [(Nat/Succ Nat/Zero), (Nat/Succ (Nat/Succ Nat/Zero))] (Tropical/Int 2))
+    (Poly/pow
+      (Poly/Node
+        (Poly/Node
+          (Poly/Leaf (Tropical/Int 0))
+          (Poly/Leaf (Tropical/Int 3))
+        )
+        (Poly/Node
+          (Poly/Node
+            (Poly/Leaf (Tropical/Int 5))
+            (Poly/Leaf (Tropical/Int 1))
+          )
+          (Poly/Leaf (Tropical/Int 1))
+        )
+      )
+      (Nat/Succ (Nat/Succ Nat/Zero))
+    )
+    (Poly/pow
+      (Poly/Node
+        (Poly/Node
+          (Poly/Leaf (Tropical/Int 3))
+          (Poly/Leaf (Tropical/Int 0))
+        )
+        (Poly/Node
+          (Poly/Leaf (Tropical/Int 1))
+          (Poly/Leaf (Tropical/Int 5))
+        )
+      )
+      (Nat/Succ (Nat/Succ (Nat/Succ Nat/Zero)))
     )
   )
-  [(Nat/Succ (Nat/Succ Nat/Zero)), (Nat/Succ (Nat/Succ (Nat/Succ (Nat/Succ Nat/Zero))))]
 )
